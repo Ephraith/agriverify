@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agri-Verify Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="/styles.css" rel="stylesheet">
+    <style>
+        body { background: #f1f5f9; }
+        .admin-header { 
+            background: #0f172a; 
+            color: white; 
+            padding: 1.5rem 2rem; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        .admin-nav {
+            background: white;
+            padding: 0.75rem 2rem;
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .admin-nav .btn {
+            background: transparent;
+            color: #64748b;
+            text-transform: none;
+            letter-spacing: normal;
+            padding: 0.6rem 1.2rem;
+        }
+        .admin-nav .btn.active {
+            background: #f1f5f9;
+            color: var(--primary);
+        }
+        .admin-page { display: none; }
+        .admin-page.active { display: block !important; }
+    </style>
+</head>
+<body>
+    <div class="admin-header">
+        <div>
+            <h1 style="font-size: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
+                <i class="fas fa-user-shield"></i> Agri-Verify Admin
+            </h1>
+            <p class="text-muted" style="font-size: 0.85rem; color: #94a3b8; margin-top: 4px;">System Management Dashboard</p>
+        </div>
+        <button class="btn btn-danger" id="admin-logout" style="padding: 0.6rem 1.2rem;">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </button>
+    </div>
+
+    <!-- Global inline notification area -->
+    <div id="site-notification" style="max-width:1200px;margin:1rem auto;display:none;padding:0 1rem;"></div>
+
+    <div class="admin-nav" id="admin-nav">
+        <button class="btn active" data-page="systems" onclick="showAdminPage('systems')">
+            <i class="fas fa-server"></i> Systems
+        </button>
+        <button class="btn" data-page="requests" onclick="showAdminPage('requests')">
+            <i class="fas fa-clipboard-list"></i> Requests
+        </button>
+        <button class="btn" data-page="farmers" onclick="showAdminPage('farmers')">
+            <i class="fas fa-users"></i> Farmers
+        </button>
+        <button class="btn" data-page="payments" onclick="showAdminPage('payments')">
+            <i class="fas fa-wallet"></i> Payments
+        </button>
+    </div>
+
+    <div class="container" style="max-width: 1400px; margin-top: 0;">
+        <div id="admin-systems" class="card admin-page active">
+            <div class="flex-between mb-1">
+                <h2><i class="fas fa-microchip"></i> System Management</h2>
+                <button class="btn btn-primary" onclick="openSystemModal()">
+                    <i class="fas fa-plus"></i> Add New System
+                </button>
+            </div>
+            
+            <div id="systems-grid" class="system-grid"></div>
+        </div>
+
+        <div id="admin-requests" class="card admin-page" style="display:none;">
+            <h2>Maintenance Requests</h2>
+            <div id="requests-container">
+                <div style="text-align:center;padding:2rem;color:#888;">
+                    <i class="fas fa-spinner loading fa-2x" style="margin-bottom:1rem;"></i>
+                    <p>Loading requests...</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="admin-farmers" class="card admin-page" style="display:none;">
+            <h2>Farmers</h2>
+            <div id="farmers-container">
+                <div class="farmers-grid">
+                    <div class="farmers-column">
+                        <div class="farmers-card">
+                            <h3 style="margin:0 0 0.5rem 0;font-size:1rem;">Add New Farmer</h3>
+                            <div style="display:flex;flex-direction:column;gap:0.5rem;">
+                                <input id="new-farmer-id" placeholder="National ID" style="padding:0.6rem;border:1px solid #e5e7eb;border-radius:8px;">
+                                <input id="new-farmer-name" placeholder="Name" style="padding:0.6rem;border:1px solid #e5e7eb;border-radius:8px;">
+                                <input id="new-farmer-phone" placeholder="Phone (254... )" style="padding:0.6rem;border:1px solid #e5e7eb;border-radius:8px;">
+                                <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:0.5rem;">
+                                    <button class="btn" onclick="clearNewFarmer()" style="background:transparent;border:1px solid #e5e7eb;color:#374151;">Clear</button>
+                                    <button class="btn btn-primary" onclick="createFarmer()">Add Farmer</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="margin-top:1rem;" class="farmers-card">
+                            <h3 style="margin:0 0 0.5rem 0;font-size:1rem;">Search / Filter</h3>
+                            <input id="farmer-search" placeholder="Search by name, ID or phone" style="padding:0.6rem;border:1px solid #e5e7eb;border-radius:8px;width:100%;">
+                        </div>
+                    </div>
+                    <div class="farmers-list-column">
+                        <div id="farmers-list"><p style="color:#666;">Loading farmers...</p></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="admin-payments" class="card admin-page" style="display:none;">
+            <h2>Payments</h2>
+            <div id="admin-payments-container">
+                <div id="pending-payments"><p style="color:#666;">Loading pending payments...</p></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Standardized Modals -->
+    <div id="verifyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-check-circle"></i> Verify Farmer</h3>
+                <span class="close">&times;</span>
+            </div>
+            <form id="verifyForm">
+                <div class="form-group">
+                    <label>Confirm National ID:</label>
+                    <input type="text" id="nationalId" required placeholder="Enter ID to verify">
+                </div>
+                <button type="submit" class="btn" style="width:100%;">
+                    <i class="fas fa-user-check"></i> Complete Verification
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div id="paymentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-hand-holding-usd"></i> Request Payment</h3>
+                <span class="close">&times;</span>
+            </div>
+            <form id="paymentForm">
+                <div class="form-group">
+                    <label>Farmer Phone Number:</label>
+                    <input type="tel" id="paymentPhone" required>
+                </div>
+                <div class="form-group">
+                    <label>Amount (KES):</label>
+                    <input type="number" id="paymentAmount" value="500" required>
+                </div>
+                <button type="submit" class="btn btn-info" style="width:100%;">
+                    <i class="fas fa-paper-plane"></i> Send M-Pesa Request
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div id="maintenanceModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-tools"></i> Maintenance Update</h3>
+                <span class="close">&times;</span>
+            </div>
+            <form id="maintenanceForm">
+                <div class="form-group">
+                    <label>System Status:</label>
+                    <select id="maintenanceStatus" required>
+                        <option value="good">Good / Operational</option>
+                        <option value="needs_maintenance">Needs Maintenance</option>
+                        <option value="under_maintenance">Under Maintenance</option>
+                        <option value="out_of_service">Out of Service</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Maintenance Notes:</label>
+                    <textarea id="maintenanceNotes" rows="3" class="form-group input" style="width:100%; border:2px solid rgba(0,0,0,0.1); border-radius:12px; padding:1rem; font-family:inherit;"></textarea>
+                </div>
+                <button type="submit" class="btn btn-warning" style="width:100%;">
+                    <i class="fas fa-save"></i> Update System
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- System CRUD Modal -->
+    <div id="systemModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="systemModalTitle"><i class="fas fa-microchip"></i> System Details</h3>
+                <span class="close">&times;</span>
+            </div>
+            <form id="systemForm">
+                <input type="hidden" id="edit-system-id">
+                <div class="form-group">
+                    <label>Device Code (ID):</label>
+                    <input type="text" id="edit-device-id" required placeholder="e.g. ESP32_005">
+                </div>
+                <div class="form-group">
+                    <label>Installation Location:</label>
+                    <input type="text" id="edit-location" required placeholder="e.g. Kiambu Sector 4">
+                </div>
+                <div class="form-group">
+                    <label>Operational Status:</label>
+                    <select id="edit-status">
+                        <option value="active">Active</option>
+                        <option value="offline">Offline / Maintenance</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Assign to Farmer (Verified Only):</label>
+                    <select id="edit-farmer-id">
+                        <option value="null">-- Unassigned --</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%;">
+                    <i class="fas fa-save"></i> Save System
+                </button>
+                <button type="button" id="delete-system-btn" class="btn btn-danger" style="width:100%; margin-top: 1rem; display: none;">
+                    <i class="fas fa-trash"></i> Delete System
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <footer class="site-footer">
+        <div class="footer-content">
+            <div class="footer-brand">
+                <h2><i class="fas fa-seedling"></i> Agri-Verify Admin</h2>
+                <p>System management and monitoring portal. Providing administrators with tools to oversee irrigation networks, farmer verifications, and payment processing.</p>
+            </div>
+            <div class="footer-links">
+                <h3>Management</h3>
+                <ul>
+                    <li><a href="#" onclick="showAdminPage('systems')">Systems Overview</a></li>
+                    <li><a href="#" onclick="showAdminPage('farmers')">Farmer Directory</a></li>
+                    <li><a href="#" onclick="showAdminPage('payments')">Payment Logs</a></li>
+                    <li><a href="#" onclick="showAdminPage('requests')">Support Requests</a></li>
+                </ul>
+            </div>
+            <div class="footer-links">
+                <h3>Admin Support</h3>
+                <ul>
+                    <li><a href="#"><i class="fas fa-book"></i> Documentation</a></li>
+                    <li><a href="#"><i class="fas fa-bug"></i> Report Issue</a></li>
+                    <li><a href="#"><i class="fas fa-headset"></i> System Status</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2024 Agri-Verify Admin Portal. Internal Use Only.</p>
+            <div style="display: flex; gap: 1.5rem;">
+                <a href="/" style="color: inherit; text-decoration: none;">Main Site</a>
+                <a href="/app.html" style="color: inherit; text-decoration: none;">Farmer Portal</a>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/ui.js"></script>
+    <script>
+        // require admin token, else redirect to login
+        const adminToken = sessionStorage.getItem('admin_token');
+        if (!adminToken) window.location.href = '/app.html';
+        function adminFetch(path, opts = {}) {
+            opts.headers = opts.headers || {};
+            if (!opts.headers['Content-Type']) opts.headers['Content-Type'] = 'application/json';
+            const token = sessionStorage.getItem('admin_token');
+            if (token) opts.headers['Authorization'] = 'Bearer ' + token;
+            return fetch(path, opts);
+        }
+        const socket = io();
+        let currentDeviceId = null;
+        let currentFarmerId = null;
+
+        // Load systems, requests, farmers and pending payments on page load
+        // default to systems page and mark nav
+        showAdminPage('systems');
+        loadSystems();
+        loadRequests();
+        loadFarmers();
+        loadPendingPayments();
+
+        function showAdminPage(page) {
+            // Remove active from all pages and buttons
+            document.querySelectorAll('.admin-page').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.admin-nav .btn').forEach(btn => btn.classList.remove('active'));
+
+            // Show target page and activate button
+            const targetPage = document.getElementById('admin-' + page);
+            if (targetPage) targetPage.classList.add('active');
+            
+            const targetBtn = document.querySelector(`.admin-nav .btn[data-page="${page}"]`);
+            if (targetBtn) targetBtn.classList.add('active');
+        }
+
+        // Modal handling
+        document.querySelectorAll('.close').forEach(close => {
+            close.onclick = () => close.closest('.modal').style.display = 'none';
+        });
+
+        // Admin logout
+        document.getElementById('admin-logout').addEventListener('click', () => {
+            sessionStorage.removeItem('admin_token');
+            window.location.href = '/';
+        });
+
+        window.onclick = (e) => {
+            if (e.target.classList.contains('modal')) {
+                e.target.style.display = 'none';
+            }
+        };
+
+        // --- System CRUD Logic ---
+        function openSystemModal(system = null) {
+            const modal = document.getElementById('systemModal');
+            const form = document.getElementById('systemForm');
+            const deleteBtn = document.getElementById('delete-system-btn');
+            const title = document.getElementById('systemModalTitle');
+            
+            form.reset();
+            populateFarmerSelect(system ? system.farmer_id : null);
+            
+            if (system) {
+                title.innerHTML = '<i class="fas fa-edit"></i> Edit System';
+                document.getElementById('edit-system-id').value = system.id;
+                document.getElementById('edit-device-id').value = system.device_id;
+                document.getElementById('edit-location').value = system.location;
+                document.getElementById('edit-status').value = system.status || 'active';
+                deleteBtn.style.display = 'block';
+                deleteBtn.onclick = () => deleteSystem(system.id);
+            } else {
+                title.innerHTML = '<i class="fas fa-plus-circle"></i> Add New System';
+                document.getElementById('edit-system-id').value = '';
+                deleteBtn.style.display = 'none';
+            }
+            
+            modal.style.display = 'block';
+        }
+
+        async function populateFarmerSelect(currentFarmerId = null) {
+            const select = document.getElementById('edit-farmer-id');
+            // Use cached farmers but only show verified ones
+            const verifiedFarmers = farmersCache.filter(f => f.verified);
+            
+            select.innerHTML = '<option value="null">-- Unassigned --</option>' + 
+                verifiedFarmers.map(f => `<option value="${f.id}" ${f.id == currentFarmerId ? 'selected' : ''}>${f.name} (${f.national_id})</option>`).join('');
+        }
+
+        document.getElementById('systemForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('edit-system-id').value;
+            const data = {
+                device_id: document.getElementById('edit-device-id').value,
+                location: document.getElementById('edit-location').value,
+                status: document.getElementById('edit-status').value,
+                farmer_id: document.getElementById('edit-farmer-id').value
+            };
+            
+            try {
+                const method = id ? 'PATCH' : 'POST';
+                const url = id ? `/admin/systems/${id}` : '/admin/systems';
+                
+                const res = await adminFetch(url, {
+                    method: method,
+                    body: JSON.stringify(data)
+                });
+                
+                if (!res.ok) throw new Error('Failed to save system');
+                
+                showNotification(`System ${id ? 'updated' : 'added'} successfully`, 'success');
+                document.getElementById('systemModal').style.display = 'none';
+                loadSystems();
+            } catch (err) {
+                showNotification('Error: ' + err.message, 'error');
+            }
+        };
+
+        async function deleteSystem(id) {
+            if (!confirm('Are you sure you want to delete this system? This action cannot be undone.')) return;
+            
+            try {
+                const res = await adminFetch(`/admin/systems/${id}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error('Failed to delete system');
+                
+                showNotification('System deleted successfully', 'success');
+                document.getElementById('systemModal').style.display = 'none';
+                loadSystems();
+            } catch (err) {
+                showNotification('Error: ' + err.message, 'error');
+            }
+        }
+
+        // Load and display systems
+        async function loadSystems() {
+                try {
+                    const response = await adminFetch('/admin/systems');
+                    if (!response.ok) throw new Error('Unauthorized');
+                    const systems = await response.json();
+                    displaySystems(systems);
+                } catch (error) {
+                    console.error('Failed to load systems:', error);
+                }
+        }
+
+        function formatTimestamp(ts) {
+            if (!ts) return null;
+            // Accept numeric ts or SQL datetime string
+            if (typeof ts === 'number') return new Date(ts).toLocaleString();
+            if (/^\d{4}-\d{2}-\d{2}T?/.test(ts)) {
+                // normalize space to T for Date parsing
+                const t = ts.replace(' ', 'T');
+                const d = new Date(t);
+                if (!isNaN(d)) return d.toLocaleString();
+            }
+            // fallback: return original
+            try { return new Date(ts).toLocaleString(); } catch (e) { return String(ts); }
+        }
+
+        function displaySystems(systems) {
+            const grid = document.getElementById('systems-grid');
+            if (!systems || !systems.length) { grid.innerHTML = '<div class="muted">No systems found.</div>'; return; }
+            grid.innerHTML = systems.map(system => {
+                const phone = system.phone || '';
+                const verified = system.verified ? true : false;
+                const paymentStatus = system.payment_status || 'pending';
+                const paymentAmount = system.payment_amount ? `KES ${system.payment_amount}` : '—';
+                const lastData = formatTimestamp(system.last_telemetry) || 'Never';
+                const maintenance = system.maintenance_status || 'unknown';
+
+                return `
+                <div class="system-item card">
+                    <div>
+                        <div class="system-head">
+                            <div>
+                                <strong>${system.device_id || 'Unknown Device'}</strong>
+                                <div class="system-meta">${system.location || 'Location not set'}</div>
+                            </div>
+                            <div style="text-align:right">
+                                <div class="status ${system.status === 'active' ? 'active' : 'offline'}">${system.status || 'unknown'}</div>
+                                <div style="margin-top:6px;font-size:0.85rem;color:var(--muted)">Last: ${lastData}</div>
+                            </div>
+                        </div>
+
+                        <p style="margin:0.45rem 0;">Farmer: <strong>${system.farmer_name || 'Unassigned'}</strong></p>
+                        <p style="margin:0.15rem 0;" class="muted">Phone: ${phone || 'N/A'}</p>
+                        <p style="margin:0.15rem 0;">Verified: <span class="status ${verified ? 'verified' : 'pending'}">${verified ? 'Yes' : 'No'}</span></p>
+                        <p style="margin:0.15rem 0;">Payment: <span class="status ${paymentStatus}">${paymentStatus}</span> &nbsp; <small class="muted">${paymentAmount}</small></p>
+                        <p style="margin:0.15rem 0;">Maintenance: <small class="muted">${maintenance}${system.maintenance_notes ? ' — ' + (system.maintenance_notes) : ''}</small></p>
+                    </div>
+
+                    <div style="margin-top:0.75rem;display:flex;gap:0.5rem;justify-content:flex-end;flex-wrap:wrap;">
+                        <button class="btn btn-info" onclick="openSystemModal(${JSON.stringify(system).replace(/"/g, '&quot;')})">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        ${!verified ? `
+                            <button class="btn btn-primary" 
+                                ${system.farmer_id ? '' : 'disabled title="System must be assigned to a farmer first"'} 
+                                onclick="openVerifyModal(${system.farmer_id || 'null'})">
+                                <i class="fas fa-user-check"></i> Verify
+                            </button>` : ''}
+                        <button class="btn btn-success" ${phone ? '' : 'disabled'} onclick="openPaymentModal(${system.id || 'null'}, '${phone || ''}')">
+                            <i class="fas fa-hand-holding-usd"></i> Request Payment
+                        </button>
+                        <button class="btn btn-warning" onclick="openMaintenanceModal(${system.id || 'null'})">
+                            <i class="fas fa-tools"></i> Maintenance
+                        </button>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        function openVerifyModal(farmerId) {
+            currentFarmerId = farmerId;
+            document.getElementById('verifyModal').style.display = 'block';
+        }
+
+        function openPaymentModal(deviceId, phone) {
+            currentDeviceId = deviceId;
+            document.getElementById('paymentPhone').value = phone || '';
+            document.getElementById('paymentModal').style.display = 'block';
+        }
+
+        function openMaintenanceModal(deviceId) {
+            currentDeviceId = deviceId;
+            document.getElementById('maintenanceModal').style.display = 'block';
+        }
+
+        // --- Admin farmers + payments ---
+        let farmersCache = [];
+        async function loadFarmers() {
+            try {
+                // Primary: admin farmers list endpoint
+                const res = await adminFetch('/admin/farmers/list');
+                if (!res.ok) throw new Error('No farmer list endpoint');
+                const farmers = await res.json();
+                farmersCache = farmers || [];
+                displayFarmers(farmersCache);
+            } catch (err) {
+                document.getElementById('farmers-list').innerHTML = `<p style="color:#666;">Failed to load farmers.</p>`;
+            }
+            // attach search handler
+            const search = document.getElementById('farmer-search');
+            if (search) {
+                search.oninput = (e) => {
+                    const q = e.target.value.trim().toLowerCase();
+                    if (!q) return displayFarmers(farmersCache);
+                    const filtered = farmersCache.filter(f => {
+                        return (f.name || '').toLowerCase().includes(q) || (f.national_id || '').toLowerCase().includes(q) || (f.phone || '').toLowerCase().includes(q);
+                    });
+                    displayFarmers(filtered);
+                };
+            }
+        }
+
+        function displayFarmers(farmers) {
+            const el = document.getElementById('farmers-list');
+            if (!farmers || !farmers.length) { el.innerHTML = `<p style="color:#666;">No farmers found.</p>`; return; }
+            el.innerHTML = `
+                <div class="farmers-cards">
+                    ${farmers.map(f => {
+                        const active = f.active ? true : false;
+                        const verified = f.verified ? true : false;
+                        return `
+                        <div class="farmers-card">
+                            <div style="display:flex;justify-content:space-between;align-items:start;gap:0.5rem;">
+                                <div>
+                                    <div style="font-weight:700">${f.name || '—'}</div>
+                                    <div class="muted" style="font-size:0.85rem">ID: ${f.national_id || '—'}</div>
+                                    <div class="muted" style="font-size:0.85rem;margin-top:6px">${f.phone || 'N/A'}</div>
+                                </div>
+                                <div style="text-align:right;min-width:80px;">
+                                    <div class="status ${verified ? 'verified' : 'pending'}" style="margin-bottom:8px">${verified ? 'Verified' : 'Pending'}</div>
+                                    <div class="muted" style="font-size:0.78rem">${active ? 'Active' : 'Inactive'}</div>
+                                </div>
+                            </div>
+                            <div style="margin-top:0.75rem;display:flex;justify-content:space-between;align-items:center;">
+                                <div class="farmer-actions">
+                                    <button class="btn" onclick="toggleFarmerActive(${f.id}, ${f.active ? 0 : 1})">${f.active ? 'Deactivate' : 'Activate'}</button>
+                                    <button class="btn btn-danger" onclick="deleteFarmer(${f.id})">Delete</button>
+                                </div>
+                                <div>
+                                    <button class="btn btn-primary" onclick="openVerifyModal(${f.id})">Verify</button>
+                                </div>
+                            </div>
+                        </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        async function createFarmer() {
+            const national_id = document.getElementById('new-farmer-id').value.trim();
+            const name = document.getElementById('new-farmer-name').value.trim();
+            const phone = document.getElementById('new-farmer-phone').value.trim();
+            if (!national_id || !name) return showNotification('National ID and Name are required', 'error');
+            const token = sessionStorage.getItem('admin_token');
+            try {
+                const res = await adminFetch('/admin/farmers', { method: 'POST', body: JSON.stringify({ national_id, name, phone }) });
+                const data = await res.json();
+                if (!res.ok) return showNotification(data.error || 'Failed', 'error');
+                showNotification('Farmer added successfully', 'success');
+                clearNewFarmer();
+                loadFarmers();
+            } catch (err) { showNotification('Failed: ' + err.message, 'error'); }
+        }
+
+        function clearNewFarmer() {
+            document.getElementById('new-farmer-id').value = '';
+            document.getElementById('new-farmer-name').value = '';
+            document.getElementById('new-farmer-phone').value = '';
+        }
+
+        async function toggleFarmerActive(id, value) {
+            try {
+                const res = await adminFetch(`/admin/farmers/${id}`, { method: 'PATCH', body: JSON.stringify({ active: !!value }) });
+                const data = await res.json();
+                if (!res.ok) return showNotification(data.error || 'Failed', 'error');
+                loadFarmers();
+            } catch (err) { showNotification('Failed: ' + err.message, 'error'); }
+        }
+
+        async function deleteFarmer(id) {
+            if (!confirm('Delete farmer?')) return;
+            try {
+                const res = await adminFetch(`/admin/farmers/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (!res.ok) return showNotification(data.error || 'Failed', 'error');
+                loadFarmers();
+            } catch (err) { showNotification('Failed: ' + err.message, 'error'); }
+        }
+
+        async function loadPendingPayments() {
+            try {
+                const res = await adminFetch('/admin/payments/pending');
+                if (!res.ok) throw new Error('Unauthorized');
+                const rows = await res.json();
+                const el = document.getElementById('pending-payments');
+                if (!rows.length) { el.innerHTML = `<p style="color:#666;">No pending payments.</p>`; return; }
+                el.innerHTML = rows.map(p => `
+                    <div style="border:1px solid #eee;padding:1rem;border-radius:12px;margin-bottom:1rem;background:white;display:flex;justify-content:space-between;align-items:center;">
+                        <div>
+                            <strong>${p.device_code || p.device_id}</strong> — ${p.farmer_name || 'Unknown'}<br>
+                            <span style="font-size:1.1rem;font-weight:700;color:var(--primary);">KES ${p.amount}</span> — 
+                            <span class="status ${p.status}">${p.status}</span>
+                            <div class="text-muted" style="font-size:0.8rem;margin-top:4px;">Requested: ${formatTimestamp(p.created_at)}</div>
+                        </div>
+                        <div>
+                            <button class="btn btn-warning" onclick="retryPayment(${p.id})">
+                                <i class="fas fa-redo"></i> Retry STK Push
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                document.getElementById('pending-payments').innerHTML = `<p style="color:#666;">Failed to load pending payments.</p>`;
+            }
+        }
+
+        async function retryPayment(paymentId) {
+            if (!confirm('Re-initiate STK Push for this payment?')) return;
+            try {
+                const res = await adminFetch('/admin/retry-payment', {
+                    method: 'POST',
+                    body: JSON.stringify({ paymentId })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    showNotification('STK Push re-initiated! New Transaction ID: ' + result.CheckoutRequestID, 'success');
+                    loadPendingPayments();
+                } else {
+                    showNotification('Failed to retry payment: ' + (result.error || 'Unknown error'), 'error');
+                }
+            } catch (err) {
+                showNotification('Error: ' + err.message, 'error');
+            }
+        }
+
+        // --- Requests ---
+        async function loadRequests() {
+            try {
+                const res = await adminFetch('/admin/requests');
+                if (!res.ok) throw new Error('Unauthorized');
+                const requests = await res.json();
+                displayRequests(requests);
+            } catch (err) {
+                document.getElementById('requests-container').innerHTML = `<p style="color:var(--danger);">Failed to load requests.</p>`;
+            }
+        }
+
+        function displayRequests(requests) {
+            const container = document.getElementById('requests-container');
+            if (!requests.length) {
+                container.innerHTML = `<p style="color:#666;">No maintenance requests.</p>`;
+                return;
+            }
+
+            container.innerHTML = requests.map(r => `
+                <div style="border:1px solid #eee;padding:1rem;border-radius:8px;margin-bottom:0.75rem;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <div>
+                            <strong>Device:</strong> ${r.device_id} — <small>${r.location || 'No location'}</small><br>
+                            <strong>Farmer:</strong> ${r.farmer_name || 'Unknown'} — ${r.phone || 'N/A'}
+                        </div>
+                        <div>
+                            ${r.resolved ? '<span class="status verified">Resolved</span>' : '<span class="status pending">Pending</span>'}
+                        </div>
+                    </div>
+                    <p style="margin-top:0.5rem;"><strong>Issue:</strong> ${r.issue_type}</p>
+                    <div style="margin-top:0.5rem;">
+                        ${r.resolved ? '' : `<button class="btn btn-success" onclick="resolveRequest(${r.id})">Mark Resolved</button>`}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function resolveRequest(id) {
+            if (!confirm('Mark this request as resolved?')) return;
+            try {
+                const res = await adminFetch(`/admin/requests/${id}/resolve`, {
+                    method: 'POST', body: JSON.stringify({ resolution_notes: 'Resolved by admin' })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    showNotification('Request resolved', 'success');
+                    loadRequests(); loadSystems();
+                } else showNotification('Failed to resolve', 'error');
+            } catch (err) { showNotification('Failed: ' + err.message, 'error'); }
+        }
+
+        // Form submissions
+        document.getElementById('verifyForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const nationalId = document.getElementById('nationalId').value;
+            
+            try {
+                const response = await adminFetch('/admin/verify-farmer', {
+                    method: 'POST',
+                    body: JSON.stringify({ farmerId: currentFarmerId, nationalId })
+                });
+                const result = await response.json();
+                if (result.success) showNotification('Farmer verified successfully!', 'success');
+                else showNotification(result.message || 'Verification failed', 'error');
+                document.getElementById('verifyModal').style.display = 'none';
+                loadSystems();
+            } catch (error) {
+                showNotification('Verification failed: ' + error.message, 'error');
+            }
+        };
+
+        document.getElementById('paymentForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const phone = document.getElementById('paymentPhone').value;
+            const amount = document.getElementById('paymentAmount').value;
+            
+            try {
+                const response = await adminFetch('/admin/initiate-payment', {
+                    method: 'POST',
+                    body: JSON.stringify({ deviceId: currentDeviceId, phone, amount })
+                });
+                const result = await response.json();
+                showNotification('Payment request sent! Transaction ID: ' + result.CheckoutRequestID, 'success');
+                document.getElementById('paymentModal').style.display = 'none';
+                loadSystems();
+            } catch (error) {
+                showNotification('Payment failed: ' + error.message, 'error');
+            }
+        };
+
+        document.getElementById('maintenanceForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const status = document.getElementById('maintenanceStatus').value;
+            const notes = document.getElementById('maintenanceNotes').value;
+            
+            try {
+                const response = await adminFetch('/admin/maintenance', {
+                    method: 'POST',
+                    body: JSON.stringify({ deviceId: currentDeviceId, status, notes })
+                });
+                const result = await response.json();
+                showNotification('Maintenance status updated!', 'success');
+                document.getElementById('maintenanceModal').style.display = 'none';
+                loadSystems();
+            } catch (error) {
+                showNotification('Update failed: ' + error.message, 'error');
+            }
+        };
+
+        // Socket events
+        socket.on('farmer_verified', () => loadSystems());
+        socket.on('payment_initiated', () => loadSystems());
+        socket.on('maintenance_updated', () => loadSystems());
+    </script>
+</body>
+</html>

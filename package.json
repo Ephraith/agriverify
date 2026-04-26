@@ -1,0 +1,22 @@
+{
+  "name": "agri-verify",
+  "version": "1.0.0",
+  "description": "Smart agricultural verification and irrigation management platform",
+  "scripts": {
+    "start": "cd backend && npm start",
+    "dev": "cd backend && npm run dev",
+    "install-deps": "cd backend && npm install",
+    "test": "node test/ui-test.js"
+  },
+  "keywords": [
+    "iot",
+    "agriculture",
+    "irrigation",
+    "verification"
+  ],
+  "author": "Ephraith",
+  "license": "ISC",
+  "dependencies": {
+    "puppeteer": "^24.40.0"
+  }
+}
