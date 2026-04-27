@@ -63,14 +63,50 @@ module.exports = (io) => {
     });
   });
 
+  // Program Statistics for Government/Donor Oversight
+  router.get('/stats', verifyAdminToken, (req, res) => {
+    const stats = {};
+    
+    const queries = [
+      { key: 'totalFarmers', sql: 'SELECT COUNT(*) as count FROM farmers WHERE active = 1' },
+      { key: 'verifiedFarmers', sql: 'SELECT COUNT(*) as count FROM farmers WHERE verified = 1 AND active = 1' },
+      { key: 'totalSystems', sql: 'SELECT COUNT(*) as count FROM devices' },
+      { key: 'activeSystems', sql: 'SELECT COUNT(*) as count FROM devices WHERE status = "active"' },
+      { key: 'totalPayments', sql: 'SELECT SUM(amount) as total FROM payments WHERE status = "paid"' },
+      { key: 'pendingPaymentsCount', sql: 'SELECT COUNT(*) as count FROM payments WHERE status = "pending"' },
+      { key: 'maintenanceRequests', sql: 'SELECT COUNT(*) as count FROM devices WHERE maintenance_status != "good"' },
+      { key: 'avgMoisture', sql: 'SELECT AVG(soil_moisture) as avg FROM sensor_logs WHERE ts > (strftime("%s", "now") * 1000 - 3600000)' },
+      { key: 'activeIrrigation', sql: 'SELECT COUNT(DISTINCT device_id) as count FROM sensor_logs WHERE valve_state = "open" AND ts > (strftime("%s", "now") * 1000 - 600000)' }
+    ];
+
+    let completed = 0;
+    queries.forEach(q => {
+      db.get(q.sql, [], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (q.key === 'totalPayments') {
+          stats[q.key] = row.total || 0;
+        } else if (q.key === 'avgMoisture') {
+          stats[q.key] = row.avg ? Math.round(row.avg * 10) / 10 : 0;
+        } else {
+          stats[q.key] = row.count !== undefined ? row.count : (row.total || 0);
+        }
+        
+        completed++;
+        if (completed === queries.length) {
+          res.json(stats);
+        }
+      });
+    });
+  });
+
   // Create a new system/device
   router.post('/systems', verifyAdminToken, (req, res) => {
-    const { device_id, location, status } = req.body;
+    const { device_id, location, status, farmer_id } = req.body;
     if (!device_id) return res.status(400).json({ error: 'device_id is required' });
 
     db.run(
-      'INSERT INTO devices (device_id, location, status) VALUES (?, ?, ?)',
-      [device_id, location || '', status || 'active'],
+      'INSERT INTO devices (device_id, location, status, farmer_id) VALUES (?, ?, ?, ?)',
+      [device_id, location || '', status || 'active', farmer_id === 'null' ? null : farmer_id],
       function(err) {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ success: true, id: this.lastID });
@@ -275,7 +311,19 @@ module.exports = (io) => {
 
   // List farmers for admin
   router.get('/farmers/list', verifyAdminToken, (req, res) => {
-    db.all('SELECT id, national_id, name, phone, verified, active FROM farmers ORDER BY id DESC', [], (err, rows) => {
+    const query = `
+      SELECT 
+        f.id, 
+        f.national_id, 
+        f.name, 
+        f.phone, 
+        f.verified, 
+        f.active,
+        EXISTS(SELECT 1 FROM devices d WHERE d.farmer_id = f.id) as assigned
+      FROM farmers f 
+      ORDER BY f.id DESC
+    `;
+    db.all(query, [], (err, rows) => {
       if (err) return res.status(500).json({ error: err.message });
       res.json(rows);
     });

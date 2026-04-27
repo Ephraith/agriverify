@@ -58,7 +58,10 @@
     <div id="site-notification" style="max-width:1200px;margin:1rem auto;display:none;padding:0 1rem;"></div>
 
     <div class="admin-nav" id="admin-nav">
-        <button class="btn active" data-page="systems" onclick="showAdminPage('systems')">
+        <button class="btn active" data-page="overview" onclick="showAdminPage('overview')">
+            <i class="fas fa-chart-line"></i> Overview
+        </button>
+        <button class="btn" data-page="systems" onclick="showAdminPage('systems')">
             <i class="fas fa-server"></i> Systems
         </button>
         <button class="btn" data-page="requests" onclick="showAdminPage('requests')">
@@ -73,7 +76,84 @@
     </div>
 
     <div class="container" style="max-width: 1400px; margin-top: 0;">
-        <div id="admin-systems" class="card admin-page active">
+        <!-- Overview Dashboard -->
+        <div id="admin-overview" class="admin-page active">
+            <div class="flex-between mb-1">
+                <h2><i class="fas fa-tachometer-alt"></i> Program Oversight Dashboard</h2>
+                <div id="last-updated" class="text-muted" style="font-size: 0.8rem;"></div>
+            </div>
+
+            <div class="grid" style="margin-bottom: 2rem; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                <div class="metric">
+                    <h3><i class="fas fa-users"></i> Total Farmers</h3>
+                    <div class="value" id="stat-total-farmers">0</div>
+                    <small id="stat-verified-farmers">0 Verified</small>
+                </div>
+                <div class="metric flow">
+                    <h3><i class="fas fa-server"></i> Active Systems</h3>
+                    <div class="value" id="stat-active-systems">0</div>
+                    <small id="stat-total-systems">0 Total Devices</small>
+                </div>
+                <div class="metric humidity">
+                    <h3><i class="fas fa-wallet"></i> Disbursed Subsidy</h3>
+                    <div class="value" style="font-size: 1.8rem;" id="stat-total-payments">KES 0</div>
+                    <small id="stat-pending-payments">0 Pending Requests</small>
+                </div>
+                <div class="metric status">
+                    <h3><i class="fas fa-tools"></i> Maintenance</h3>
+                    <div class="value" id="stat-maintenance">0</div>
+                    <small>Systems needing attention</small>
+                </div>
+                <div class="metric flow" style="background: linear-gradient(135deg, #3498db, #2980b9);">
+                    <h3><i class="fas fa-tint"></i> Avg. Moisture</h3>
+                    <div class="value" id="stat-avg-moisture">0%</div>
+                    <small>Last 60 mins</small>
+                </div>
+                <div class="metric flow" style="background: linear-gradient(135deg, #27ae60, #2ecc71);">
+                    <h3><i class="fas fa-faucet"></i> Active Irrigation</h3>
+                    <div class="value" id="stat-active-irrigation">0</div>
+                    <small>Systems currently open</small>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
+                <div class="card" style="margin-bottom: 0;">
+                    <h3><i class="fas fa-history"></i> Recent Activity</h3>
+                    <div id="recent-activity-list" style="margin-top: 1rem;">
+                        <p class="text-muted">Live activity stream from IoT devices and M-Pesa...</p>
+                    </div>
+                </div>
+                <div class="card" style="margin-bottom: 0; background: var(--dark); color: white;">
+                    <h3 style="color: white;"><i class="fas fa-shield-alt"></i> Program Integrity</h3>
+                    <div style="margin-top: 1rem;">
+                        <div style="margin-bottom: 1.5rem;">
+                            <div class="flex-between" style="font-size: 0.9rem; margin-bottom: 0.5rem;">
+                                <span>Verification Rate</span>
+                                <span id="verify-rate-percent">0%</span>
+                            </div>
+                            <div class="progress-bar" style="background: rgba(255,255,255,0.1);">
+                                <div id="verify-rate-bar" class="progress-fill" style="width: 0%; background: var(--success);"></div>
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 1.5rem;">
+                            <div class="flex-between" style="font-size: 0.9rem; margin-bottom: 0.5rem;">
+                                <span>System Uptime</span>
+                                <span>98.4%</span>
+                            </div>
+                            <div class="progress-bar" style="background: rgba(255,255,255,0.1);">
+                                <div class="progress-fill" style="width: 98.4%; background: var(--info);"></div>
+                            </div>
+                        </div>
+                        <div class="quick-action" style="background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.2); padding: 1rem;">
+                            <p style="font-size: 0.8rem; margin-bottom: 0.5rem;">Export Program Report (PDF)</p>
+                            <button class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.8rem;">Generate Report</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="admin-systems" class="card admin-page">
             <div class="flex-between mb-1">
                 <h2><i class="fas fa-microchip"></i> System Management</h2>
                 <button class="btn btn-primary" onclick="openSystemModal()">
@@ -201,40 +281,72 @@
 
     <!-- System CRUD Modal -->
     <div id="systemModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width: 600px;">
             <div class="modal-header">
-                <h3 id="systemModalTitle"><i class="fas fa-microchip"></i> System Details</h3>
+                <div>
+                    <h3 id="systemModalTitle" style="margin:0;"><i class="fas fa-microchip"></i> System Details</h3>
+                    <p class="text-muted" style="font-size: 0.8rem; margin: 4px 0 0 0;">Configure device parameters and assignment</p>
+                </div>
                 <span class="close">&times;</span>
             </div>
-            <form id="systemForm">
+            <form id="systemForm" class="stagger-children">
                 <input type="hidden" id="edit-system-id">
-                <div class="form-group">
-                    <label>Device Code (ID):</label>
-                    <input type="text" id="edit-device-id" required placeholder="e.g. ESP32_005">
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                    <div class="form-group">
+                        <label><i class="fas fa-id-badge"></i> Device Code (ID)</label>
+                        <input type="text" id="edit-device-id" required placeholder="e.g. ESP32_005" 
+                               style="border-width: 2px;" oninput="validateDeviceId(this)">
+                        <small id="device-id-feedback" style="display:block; margin-top:4px; font-size:0.75rem;"></small>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-signal"></i> Operational Status</label>
+                        <select id="edit-status" style="border-width: 2px;">
+                            <option value="active">🟢 Active / Online</option>
+                            <option value="offline">🔴 Offline / Maintenance</option>
+                        </select>
+                    </div>
                 </div>
+
                 <div class="form-group">
-                    <label>Installation Location:</label>
-                    <input type="text" id="edit-location" required placeholder="e.g. Kiambu Sector 4">
+                    <label><i class="fas fa-map-marker-alt"></i> Installation Location</label>
+                    <input type="text" id="edit-location" required placeholder="e.g. Kiambu Sector 4, Block B"
+                           style="border-width: 2px;">
                 </div>
-                <div class="form-group">
-                    <label>Operational Status:</label>
-                    <select id="edit-status">
-                        <option value="active">Active</option>
-                        <option value="offline">Offline / Maintenance</option>
-                    </select>
+
+                <div class="form-group" id="farmer-assign-group" style="padding: 1.25rem; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
+                    <label style="display:flex; justify-content:space-between; align-items:center;">
+                        <span><i class="fas fa-user-tag"></i> Assign to Farmer</span>
+                        <span class="badge" id="assignment-badge" style="background:#e2e8f0; color:#64748b;">Verified Only</span>
+                    </label>
+                    <div style="position:relative; margin-top: 0.5rem;">
+                        <select id="edit-farmer-id" style="border-width: 2px; background: white;" onchange="updateAssignmentUI()">
+                            <option value="null">-- Unassigned --</option>
+                        </select>
+                    </div>
+                    <div id="farmer-details-preview" style="margin-top: 1rem; display: none; animation: fadeIn 0.3s ease;">
+                        <div style="display:flex; align-items:center; gap:0.75rem; padding:0.75rem; background:white; border-radius:8px; border:1px solid #e2e8f0;">
+                            <div style="width:40px; height:40px; border-radius:50%; background:var(--primary); color:white; display:flex; align-items:center; justify-content:center;">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div style="flex:1;">
+                                <div id="preview-name" style="font-weight:600; font-size:0.9rem;"></div>
+                                <div id="preview-phone" class="text-muted" style="font-size:0.8rem;"></div>
+                            </div>
+                            <div class="status verified" style="font-size:0.7rem; padding: 0.2rem 0.5rem;">Verified</div>
+                        </div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>Assign to Farmer (Verified Only):</label>
-                    <select id="edit-farmer-id">
-                        <option value="null">-- Unassigned --</option>
-                    </select>
+
+                <div style="margin-top: 2rem; display: flex; flex-direction: column; gap: 1rem;">
+                    <button type="submit" id="save-system-btn" class="btn btn-primary" style="width:100%; display: flex; align-items:center; justify-content:center; gap:0.75rem;">
+                        <i class="fas fa-save"></i> <span>Save System Configuration</span>
+                    </button>
+                    
+                    <button type="button" id="delete-system-btn" class="btn btn-danger" style="width:100%; display: none; align-items:center; justify-content:center; gap:0.75rem; opacity: 0.8;">
+                        <i class="fas fa-trash"></i> <span>Remove System</span>
+                    </button>
                 </div>
-                <button type="submit" class="btn btn-primary" style="width:100%;">
-                    <i class="fas fa-save"></i> Save System
-                </button>
-                <button type="button" id="delete-system-btn" class="btn btn-danger" style="width:100%; margin-top: 1rem; display: none;">
-                    <i class="fas fa-trash"></i> Delete System
-                </button>
             </form>
         </div>
     </div>
@@ -248,7 +360,7 @@
             <div class="footer-links">
                 <h3>Management</h3>
                 <ul>
-                    <li><a href="#" onclick="showAdminPage('systems')">Systems Overview</a></li>
+                    <li><a href="#" onclick="showAdminPage('overview')">Systems Overview</a></li>
                     <li><a href="#" onclick="showAdminPage('farmers')">Farmer Directory</a></li>
                     <li><a href="#" onclick="showAdminPage('payments')">Payment Logs</a></li>
                     <li><a href="#" onclick="showAdminPage('requests')">Support Requests</a></li>
@@ -289,13 +401,24 @@
         let currentDeviceId = null;
         let currentFarmerId = null;
 
-        // Load systems, requests, farmers and pending payments on page load
-        // default to systems page and mark nav
-        showAdminPage('systems');
+        // Load data on page load
+        showAdminPage('overview');
+        loadStats();
         loadSystems();
         loadRequests();
         loadFarmers();
         loadPendingPayments();
+
+        // Keep overview stats fresh: refresh on relevant socket events and periodically
+        socket.on('connect', () => loadStats());
+        socket.on('farmer_verified', () => loadStats());
+        socket.on('payment_initiated', () => loadStats());
+        socket.on('maintenance_updated', () => loadStats());
+        socket.on('telemetry', () => loadStats());
+        socket.on('alert', () => loadStats());
+
+        // Poll every 60 seconds as a fallback
+        setInterval(loadStats, 60000);
 
         function showAdminPage(page) {
             // Remove active from all pages and buttons
@@ -308,6 +431,35 @@
             
             const targetBtn = document.querySelector(`.admin-nav .btn[data-page="${page}"]`);
             if (targetBtn) targetBtn.classList.add('active');
+
+            if (page === 'overview') loadStats();
+        }
+
+        async function loadStats() {
+            try {
+                const res = await adminFetch('/admin/stats');
+                if (!res.ok) return;
+                const stats = await res.json();
+                displayStats(stats);
+            } catch (err) { console.error('Stats error:', err); }
+        }
+
+        function displayStats(stats) {
+            document.getElementById('stat-total-farmers').innerText = stats.totalFarmers || 0;
+            document.getElementById('stat-verified-farmers').innerText = (stats.verifiedFarmers || 0) + ' Verified';
+            document.getElementById('stat-active-systems').innerText = stats.activeSystems || 0;
+            document.getElementById('stat-total-systems').innerText = (stats.totalSystems || 0) + ' Total Devices';
+            document.getElementById('stat-total-payments').innerText = 'KES ' + (stats.totalPayments || 0).toLocaleString();
+            document.getElementById('stat-pending-payments').innerText = (stats.pendingPaymentsCount || 0) + ' Pending Requests';
+            document.getElementById('stat-maintenance').innerText = stats.maintenanceRequests || 0;
+            document.getElementById('stat-avg-moisture').innerText = (stats.avgMoisture || 0) + '%';
+            document.getElementById('stat-active-irrigation').innerText = stats.activeIrrigation || 0;
+            
+            const rate = stats.totalFarmers ? Math.round((stats.verifiedFarmers / stats.totalFarmers) * 100) : 0;
+            document.getElementById('verify-rate-percent').innerText = rate + '%';
+            document.getElementById('verify-rate-bar').style.width = rate + '%';
+            
+            document.getElementById('last-updated').innerText = 'Last updated: ' + new Date().toLocaleTimeString();
         }
 
         // Modal handling
@@ -327,15 +479,65 @@
             }
         };
 
+        // --- UI Dynamic Helpers ---
+        function validateDeviceId(input) {
+            const feedback = document.getElementById('device-id-feedback');
+            const value = input.value.trim();
+            const pattern = /^ESP32_\d{3,}$/;
+            
+            if (!value) {
+                feedback.innerHTML = '';
+                input.style.borderColor = 'rgba(0,0,0,0.1)';
+            } else if (pattern.test(value)) {
+                feedback.innerHTML = '<i class="fas fa-check-circle"></i> Format valid';
+                feedback.style.color = 'var(--success)';
+                input.style.borderColor = 'var(--success)';
+            } else {
+                feedback.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Expected format: ESP32_XXX';
+                feedback.style.color = 'var(--danger)';
+                input.style.borderColor = 'var(--danger)';
+            }
+        }
+
+        function updateAssignmentUI() {
+            const select = document.getElementById('edit-farmer-id');
+            const preview = document.getElementById('farmer-details-preview');
+            const badge = document.getElementById('assignment-badge');
+            const farmerId = select.value;
+
+            if (farmerId === 'null') {
+                preview.style.display = 'none';
+                badge.style.background = '#e2e8f0';
+                badge.style.color = '#64748b';
+                badge.innerHTML = 'Unassigned';
+            } else {
+                const farmer = farmersCache.find(f => f.id == farmerId);
+                if (farmer) {
+                    document.getElementById('preview-name').innerText = farmer.name;
+                    document.getElementById('preview-phone').innerText = farmer.phone || 'No phone provided';
+                    preview.style.display = 'block';
+                    badge.style.background = 'rgba(22, 160, 133, 0.1)';
+                    badge.style.color = 'var(--primary)';
+                    badge.innerHTML = 'Assigned';
+                }
+            }
+        }
+
         // --- System CRUD Logic ---
-        function openSystemModal(system = null) {
+        async function openSystemModal(system = null) {
             const modal = document.getElementById('systemModal');
             const form = document.getElementById('systemForm');
             const deleteBtn = document.getElementById('delete-system-btn');
             const title = document.getElementById('systemModalTitle');
+            const deviceIdInput = document.getElementById('edit-device-id');
+            const feedback = document.getElementById('device-id-feedback');
             
             form.reset();
-            populateFarmerSelect(system ? system.farmer_id : null);
+            feedback.innerHTML = '';
+            deviceIdInput.style.borderColor = 'rgba(0,0,0,0.1)';
+            
+            // Ensure farmer select is populated before updating assignment UI
+            await populateFarmerSelect(system ? system.farmer_id : null);
             
             if (system) {
                 title.innerHTML = '<i class="fas fa-edit"></i> Edit System';
@@ -343,12 +545,22 @@
                 document.getElementById('edit-device-id').value = system.device_id;
                 document.getElementById('edit-location').value = system.location;
                 document.getElementById('edit-status').value = system.status || 'active';
-                deleteBtn.style.display = 'block';
+                deleteBtn.style.display = 'flex';
                 deleteBtn.onclick = () => deleteSystem(system.id);
+                
+                // Trigger UI updates
+                validateDeviceId(deviceIdInput);
+                // assignment select was populated above, now update preview
+                updateAssignmentUI();
             } else {
                 title.innerHTML = '<i class="fas fa-plus-circle"></i> Add New System';
                 document.getElementById('edit-system-id').value = '';
                 deleteBtn.style.display = 'none';
+                // Ensure new system shows unassigned by default
+                document.getElementById('edit-farmer-id').value = 'null';
+                document.getElementById('farmer-details-preview').style.display = 'none';
+                document.getElementById('assignment-badge').innerHTML = 'New System';
+                updateAssignmentUI();
             }
             
             modal.style.display = 'block';
@@ -356,11 +568,24 @@
 
         async function populateFarmerSelect(currentFarmerId = null) {
             const select = document.getElementById('edit-farmer-id');
+            // Ensure farmersCache is populated; load if empty
+            if (!farmersCache || farmersCache.length === 0) {
+                await loadFarmers();
+            }
             // Use cached farmers but only show verified ones
-            const verifiedFarmers = farmersCache.filter(f => f.verified);
+            // Filter: show unassigned farmers OR the farmer already assigned to this device
+            const relevantFarmers = farmersCache.filter(f => {
+                if (!f.verified) return false;
+                if (f.id == currentFarmerId) return true;
+                return !f.assigned;
+            });
             
             select.innerHTML = '<option value="null">-- Unassigned --</option>' + 
-                verifiedFarmers.map(f => `<option value="${f.id}" ${f.id == currentFarmerId ? 'selected' : ''}>${f.name} (${f.national_id})</option>`).join('');
+                relevantFarmers.map(f => {
+                    const isCurrent = f.id == currentFarmerId;
+                    const label = isCurrent ? `${f.name} (${f.national_id}) — Assigned` : `${f.name} (${f.national_id})`;
+                    return `<option value="${f.id}" ${isCurrent ? 'selected' : ''}>${label}</option>`;
+                }).join('');
         }
 
         document.getElementById('systemForm').onsubmit = async (e) => {
@@ -387,6 +612,7 @@
                 showNotification(`System ${id ? 'updated' : 'added'} successfully`, 'success');
                 document.getElementById('systemModal').style.display = 'none';
                 loadSystems();
+                loadFarmers(); // Refresh farmers to update assignment status
             } catch (err) {
                 showNotification('Error: ' + err.message, 'error');
             }
@@ -402,6 +628,7 @@
                 showNotification('System deleted successfully', 'success');
                 document.getElementById('systemModal').style.display = 'none';
                 loadSystems();
+                loadFarmers(); // Refresh farmers to update assignment status
             } catch (err) {
                 showNotification('Error: ' + err.message, 'error');
             }
@@ -538,6 +765,7 @@
                     ${farmers.map(f => {
                         const active = f.active ? true : false;
                         const verified = f.verified ? true : false;
+                        const assigned = f.assigned ? true : false;
                         return `
                         <div class="farmers-card">
                             <div style="display:flex;justify-content:space-between;align-items:start;gap:0.5rem;">
@@ -546,8 +774,9 @@
                                     <div class="muted" style="font-size:0.85rem">ID: ${f.national_id || '—'}</div>
                                     <div class="muted" style="font-size:0.85rem;margin-top:6px">${f.phone || 'N/A'}</div>
                                 </div>
-                                <div style="text-align:right;min-width:80px;">
+                                <div style="text-align:right;min-width:90px;">
                                     <div class="status ${verified ? 'verified' : 'pending'}" style="margin-bottom:8px">${verified ? 'Verified' : 'Pending'}</div>
+                                    <div class="status ${assigned ? 'offline' : 'active'}" style="margin-bottom:8px; font-size: 0.7rem; padding: 0.2rem 0.5rem;">${assigned ? 'Assigned' : 'Unassigned'}</div>
                                     <div class="muted" style="font-size:0.78rem">${active ? 'Active' : 'Inactive'}</div>
                                 </div>
                             </div>
@@ -721,6 +950,7 @@
                 else showNotification(result.message || 'Verification failed', 'error');
                 document.getElementById('verifyModal').style.display = 'none';
                 loadSystems();
+                loadStats();
             } catch (error) {
                 showNotification('Verification failed: ' + error.message, 'error');
             }
@@ -740,6 +970,7 @@
                 showNotification('Payment request sent! Transaction ID: ' + result.CheckoutRequestID, 'success');
                 document.getElementById('paymentModal').style.display = 'none';
                 loadSystems();
+                loadStats();
             } catch (error) {
                 showNotification('Payment failed: ' + error.message, 'error');
             }
@@ -759,15 +990,65 @@
                 showNotification('Maintenance status updated!', 'success');
                 document.getElementById('maintenanceModal').style.display = 'none';
                 loadSystems();
+                loadStats();
             } catch (error) {
                 showNotification('Update failed: ' + error.message, 'error');
             }
         };
 
         // Socket events
-        socket.on('farmer_verified', () => loadSystems());
-        socket.on('payment_initiated', () => loadSystems());
-        socket.on('maintenance_updated', () => loadSystems());
+        socket.on('farmer_verified', () => { loadSystems(); loadStats(); addActivity('Farmer verified successfully', 'check-circle', 'success'); });
+        socket.on('payment_initiated', () => { loadSystems(); loadStats(); addActivity('Payment request initiated', 'paper-plane', 'info'); });
+        socket.on('payment', (data) => { 
+            loadSystems(); 
+            loadStats(); 
+            const color = data.status === 'paid' ? 'success' : (data.status === 'failed' ? 'danger' : 'warning');
+            const icon = data.status === 'paid' ? 'check-double' : 'clock';
+            addActivity(`Payment ${data.status}: ${data.amount || ''} KES`, icon, color); 
+        });
+        socket.on('maintenance_updated', () => { loadSystems(); loadStats(); addActivity('System maintenance updated', 'tools', 'warning'); });
+        socket.on('telemetry', (data) => { 
+            if (document.getElementById('admin-overview').classList.contains('active')) {
+                // update activity log for every telemetry
+                if (data.flow_rate > 0) {
+                    addActivity(`Irrigation active on ${data.device_id}`, 'faucet', 'primary');
+                } else {
+                    addActivity(`Live data from ${data.device_id}: Moisture ${data.soil_moisture}%`, 'tint', 'info');
+                }
+                loadStats(); // refresh realtime metrics like avg moisture and active count
+            }
+        });
+
+        function addActivity(text, icon = 'info-circle', type = 'muted') {
+            const list = document.getElementById('recent-activity-list');
+            if (list.querySelector('p.text-muted')) list.innerHTML = '';
+            
+            const div = document.createElement('div');
+            div.style.padding = '0.75rem 0';
+            div.style.borderBottom = '1px solid #f1f5f9';
+            div.style.fontSize = '0.85rem';
+            div.style.display = 'flex';
+            div.style.alignItems = 'center';
+            div.style.gap = '0.75rem';
+            
+            const colorMap = {
+                success: 'var(--success)',
+                danger: 'var(--danger)',
+                warning: 'var(--warning)',
+                info: 'var(--info)',
+                primary: 'var(--primary)',
+                muted: '#94a3b8'
+            };
+
+            div.innerHTML = `
+                <i class="fas fa-${icon}" style="color: ${colorMap[type] || colorMap.muted}"></i>
+                <span style="flex:1;">${text}</span> 
+                <span class="text-muted" style="font-size:0.75rem;">${new Date().toLocaleTimeString()}</span>
+            `;
+            
+            list.prepend(div);
+            if (list.children.length > 10) list.lastElementChild.remove();
+        }
     </script>
 </body>
 </html>

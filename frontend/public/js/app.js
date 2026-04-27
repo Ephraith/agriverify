@@ -113,7 +113,9 @@ async function loadDashboard() {
     const data = await res.json();
     // update global devices array (defined in devices.js) so updateStats() works
     if (typeof devices !== 'undefined') {
-      window.devices = data || [];
+      // assign to the actual `devices` variable and mirror to window for compatibility
+      devices = data || [];
+      try { window.devices = devices; } catch (e) {}
     }
     renderDevices(data || []);
     populateDeviceSelect(data || []);
@@ -170,7 +172,9 @@ async function loadPayments() {
     const data = await res.json();
     // update global payments array (defined in payments.js)
     if (typeof payments !== 'undefined') {
-      window.payments = data || [];
+      // assign to the actual `payments` variable and mirror to window for compatibility
+      payments = data || [];
+      try { window.payments = payments; } catch (e) {}
     }
     renderPayments(data || []);
     if (typeof updateStats === 'function') updateStats();

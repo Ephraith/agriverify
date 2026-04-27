@@ -85,7 +85,7 @@ module.exports = (io) => {
     if (!callback) return res.sendStatus(400);
 
     const { CheckoutRequestID, ResultCode, ResultDesc, CallbackMetadata } = callback;
-    const status = ResultCode === 0 ? 'SUCCESS' : 'FAILED';
+    const status = ResultCode === 0 ? 'paid' : 'failed';
 
     let mpesaCode = null;
     if (CallbackMetadata) {
@@ -95,7 +95,7 @@ module.exports = (io) => {
 
     db.run(
       `UPDATE transactions SET status = ? WHERE trans_id = ?`,
-      [status, CheckoutRequestID],
+      [status.toUpperCase(), CheckoutRequestID],
       function (err) {
         if (err) console.error('DB update error:', err.message);
       }
@@ -104,7 +104,7 @@ module.exports = (io) => {
     // Also update payments table if linked
     db.run(
       `UPDATE payments SET status = ?, transaction_id = ? WHERE transaction_id = ?`,
-      [status.toLowerCase(), mpesaCode || CheckoutRequestID, CheckoutRequestID]
+      [status, mpesaCode || CheckoutRequestID, CheckoutRequestID]
     );
 
     io.emit('payment', { trans_id: CheckoutRequestID, mpesa_code: mpesaCode, status, result_desc: ResultDesc });
