@@ -202,5 +202,53 @@ module.exports = (io) => {
     });
   });
 
+  // Farmer confirm resolution
+  router.post('/maintenance-requests/:id/confirm', (req, res) => {
+    const { id } = req.params;
+    const { farmerId } = req.body;
+
+    db.get(`SELECT device_id FROM audit_alerts WHERE id = ?`, [id], (err, alert) => {
+      if (err || !alert) return res.status(404).json({ error: 'Request not found' });
+
+      // Verify farmer owns the device
+      db.get(`SELECT id FROM devices WHERE device_id = ? AND farmer_id = ?`, [alert.device_id, farmerId], (err, device) => {
+        if (err || !device) return res.status(403).json({ error: 'Unauthorized' });
+
+        db.serialize(() => {
+          // resolved = 2 means "Resolved and confirmed by farmer"
+          db.run(`UPDATE audit_alerts SET resolved = 2, farmer_confirmed = 1 WHERE id = ?`, [id]);
+          db.run(`UPDATE devices SET maintenance_status = 'good', maintenance_notes = 'Confirmed by farmer' WHERE id = ?`, [device.id]);
+          
+          io.emit('maintenance_confirmed', { requestId: id, farmerId, deviceId: alert.device_id });
+          res.json({ success: true, message: 'Resolution confirmed' });
+        });
+      });
+    });
+  });
+
+  // Farmer reject resolution
+  router.post('/maintenance-requests/:id/reject', (req, res) => {
+    const { id } = req.params;
+    const { farmerId, notes } = req.body;
+
+    db.get(`SELECT device_id FROM audit_alerts WHERE id = ?`, [id], (err, alert) => {
+      if (err || !alert) return res.status(404).json({ error: 'Request not found' });
+
+      db.get(`SELECT id FROM devices WHERE device_id = ? AND farmer_id = ?`, [alert.device_id, farmerId], (err, device) => {
+        if (err || !device) return res.status(403).json({ error: 'Unauthorized' });
+
+        db.serialize(() => {
+          // resolved = 0 (Back to admin queue), farmer_confirmed = -1 (Rejected)
+          db.run(`UPDATE audit_alerts SET resolved = 0, farmer_confirmed = -1 WHERE id = ?`, [id]);
+          db.run(`UPDATE devices SET maintenance_status = 'needs_maintenance', maintenance_notes = ? WHERE id = ?`, 
+            [notes || 'Rejected by farmer: Not fixed', device.id]);
+          
+          io.emit('maintenance_rejected', { requestId: id, farmerId, deviceId: alert.device_id, notes });
+          res.json({ success: true, message: 'Resolution rejected' });
+        });
+      });
+    });
+  });
+
   return router;
 };

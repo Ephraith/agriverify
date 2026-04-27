@@ -95,6 +95,7 @@ function init() {
       alert_type TEXT,
       severity TEXT,
       resolved INTEGER DEFAULT 0,
+      farmer_confirmed INTEGER DEFAULT 0,
       ts INTEGER
     )`);
 

@@ -266,7 +266,73 @@ async function loadMaintenanceRequests() {
 function renderMaintenanceRequests(requests) {
   const container = document.getElementById('maintenance-requests-container'); if (!container) return;
   if (!requests.length) { container.innerHTML = `<div style="text-align:center;padding:2rem;color:#888;"><i class="fas fa-clipboard-check fa-2x" style="margin-bottom:1rem;"></i><p>No maintenance requests yet.</p></div>`; return; }
-  container.innerHTML = requests.map(r => `<div class="log-entry ${r.resolved ? '' : 'alert'}" style="margin-bottom:0.75rem;"><div style="display:flex;justify-content:space-between;align-items:center;"><strong><i class="fas fa-tools"></i> ${r.issue_type.replace(/_/g,' ')}</strong><span class="status ${r.resolved ? 'online' : 'offline'}" style="font-size:0.7rem;">${r.resolved ? 'Resolved' : 'Pending'}</span></div><small style="color:#888;"><i class="fas fa-microchip"></i> ${r.device_id} — ${r.location || ''}</small><br><small style="color:#888;"><i class="fas fa-clock"></i> ${new Date(r.ts).toLocaleString()}</small></div>`).join('');
+  
+  container.innerHTML = requests.map(r => {
+    let statusLabel = 'Pending';
+    let statusClass = 'offline';
+    let actionButtons = '';
+
+    if (r.resolved === 2) {
+      statusLabel = 'Resolved';
+      statusClass = 'online';
+    } else if (r.resolved === 1) {
+      statusLabel = 'Repaired (Pending Confirmation)';
+      statusClass = 'warning';
+      actionButtons = `
+        <div style="margin-top:0.75rem; display:flex; gap:0.5rem;">
+          <button class="btn btn-primary" onclick="confirmResolution(${r.id})" style="padding:0.4rem 0.8rem; font-size:0.8rem;">
+            <i class="fas fa-check"></i> Accept Fix
+          </button>
+          <button class="btn btn-danger" onclick="rejectResolution(${r.id})" style="padding:0.4rem 0.8rem; font-size:0.8rem;">
+            <i class="fas fa-times"></i> Not Fixed
+          </button>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="log-entry ${r.resolved === 2 ? '' : 'alert'}" style="margin-bottom:0.75rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <strong><i class="fas fa-tools"></i> ${r.issue_type.replace(/_/g,' ')}</strong>
+          <span class="status ${statusClass}" style="font-size:0.7rem;">${statusLabel}</span>
+        </div>
+        <small style="color:#888;"><i class="fas fa-microchip"></i> ${r.device_id} — ${r.location || ''}</small><br>
+        <small style="color:#888;"><i class="fas fa-clock"></i> ${new Date(r.ts).toLocaleString()}</small>
+        ${actionButtons}
+      </div>
+    `;
+  }).join('');
+}
+
+async function confirmResolution(requestId) {
+  if (!confirm('Confirm that this issue has been resolved to your satisfaction?')) return;
+  try {
+    const res = await fetch(`/farmer/maintenance-requests/${requestId}/confirm`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ farmerId: farmer.id })
+    });
+    if (!res.ok) throw new Error('Failed to confirm');
+    showNotification('Thank you! Resolution confirmed.', 'success');
+    loadMaintenanceRequests();
+    loadDashboard();
+  } catch (err) { showNotification(err.message, 'error'); }
+}
+
+async function rejectResolution(requestId) {
+  const notes = prompt('Please describe why the issue is not fixed:');
+  if (notes === null) return;
+  try {
+    const res = await fetch(`/farmer/maintenance-requests/${requestId}/reject`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ farmerId: farmer.id, notes })
+    });
+    if (!res.ok) throw new Error('Failed to reject');
+    showNotification('Reported back to administrator.', 'warning');
+    loadMaintenanceRequests();
+    loadDashboard();
+  } catch (err) { showNotification(err.message, 'error'); }
 }
 
 // socket listeners — only attach if socketClient exists

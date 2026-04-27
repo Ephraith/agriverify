@@ -258,7 +258,7 @@ module.exports = (io) => {
     });
   });
 
-  // Resolve a maintenance request
+  // Resolve a maintenance request (marks as REPAIRED, pending farmer confirmation)
   router.post('/requests/:id/resolve', verifyAdminToken, (req, res) => {
     const { id } = req.params;
     const { resolution_notes } = req.body;
@@ -267,14 +267,15 @@ module.exports = (io) => {
       if (err) return res.status(500).json({ error: err.message });
       if (!row) return res.status(404).json({ error: 'Request not found' });
 
+      // resolved = 1 means "Repaired by admin, waiting for farmer"
       db.run('UPDATE audit_alerts SET resolved = 1 WHERE id = ?', [id], function(err) {
         if (err) return res.status(500).json({ error: err.message });
 
-        // mark device maintenance status as good and add notes
-        db.run('UPDATE devices SET maintenance_status = ?, maintenance_notes = ? WHERE device_id = ?', ['good', resolution_notes || 'Resolved by admin', row.device_id], function(err) {
+        // mark device maintenance status as pending_confirmation and add notes
+        db.run('UPDATE devices SET maintenance_status = ?, maintenance_notes = ? WHERE device_id = ?', ['pending_confirmation', resolution_notes || 'Repaired by admin, awaiting farmer confirmation', row.device_id], function(err) {
           if (err) return res.status(500).json({ error: err.message });
-          io.emit('maintenance_resolved', { requestId: id, deviceId: row.device_id });
-          res.json({ success: true });
+          io.emit('maintenance_resolved', { requestId: id, deviceId: row.device_id, status: 'repaired' });
+          res.json({ success: true, message: 'Marked as repaired, awaiting farmer confirmation' });
         });
       });
     });
